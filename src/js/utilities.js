@@ -68,6 +68,10 @@
     return index;
   }
 
+  function sign(x) {
+    return typeof x === 'number' ? x ? x < 0 ? -1 : 1 : x === x ? 0 : NaN : NaN;
+  }
+
   function trim(str) {
     if (!isString(str)) {
       str = String(str);

@@ -5,7 +5,7 @@
  * Copyright (c) 2015 Fengyuan Chen
  * Released under the MIT license
  *
- * Date: 2015-10-25T02:25:08.062Z
+ * Date: 2015-11-10T04:39:25.057Z
  */
 
 (function (global, factory) {
@@ -167,6 +167,10 @@
     });
 
     return index;
+  }
+
+  function sign(x) {
+    return typeof x === 'number' ? x ? x < 0 ? -1 : 1 : x === x ? 0 : NaN : NaN;
   }
 
   function trim(str) {
@@ -1601,6 +1605,7 @@
       }
 
       if (action) {
+
         if (isFunction(options.cropmove) && options.cropmove.call(this.element, {
           originalEvent: e,
           action: action
@@ -1613,7 +1618,7 @@
         this.endX = touch ? touch.pageX : e.pageX;
         this.endY = touch ? touch.pageY : e.pageY;
 
-        this.change(e.shiftKey, action === ACTION_ZOOM ? e : null);
+        this.change(e.shiftKey, e);
       }
     },
 
@@ -1668,6 +1673,7 @@
       var offset;
       var range;
 
+      var rotate = (getData(this.dragBox, DATA_ACTION) === ACTION_MOVE && options.rotatable && action !== ACTION_ALL ); 
       // Locking aspect ratio in "free mode" by holding shift key
       if (!aspectRatio && shiftKey) {
         aspectRatio = width && height ? width / height : 1;
@@ -1690,346 +1696,367 @@
         range.Y = range.x / aspectRatio;
       }
 
-      switch (action) {
-        // Move crop box
-        case ACTION_ALL:
-          left += range.x;
-          top += range.y;
-          break;
+      if (rotate) {
+        var rotateAngleDegrees = 0;
+        var startAngle;
+        var finishAngle;
+        var xSign = sign((top + (height / 2)) - originalEvent.pageY);
+        var ySign = sign(originalEvent.pageX - (left + (width / 2)));
 
-        // Resize crop box
-        case ACTION_EAST:
-          if (range.x >= 0 && (right >= maxWidth || aspectRatio &&
-            (top <= minTop || bottom >= maxHeight))) {
+        startAngle = Math.atan((width / 2) / (height / 2));
+        finishAngle = Math.atan(((width / 2) + range.x) / (height / 2));
+        var rotateAngleRadiansX = xSign * (finishAngle - startAngle);
 
-            renderable = false;
+        startAngle = Math.atan((height / 2) / (width / 2));
+        finishAngle = Math.atan(((height / 2) + range.y) / (width / 2));
+        var rotateAngleRadiansY = ySign * (finishAngle - startAngle);
+
+        rotateAngleDegrees = (rotateAngleRadiansX + rotateAngleRadiansY) * (180 / Math.PI);
+        this.rotate(rotateAngleDegrees);
+
+      } else {
+
+        switch (action) {
+          // Move crop box
+          case ACTION_ALL:
+            left += range.x;
+            top += range.y;
             break;
-          }
 
-          width += range.x;
+          // Resize crop box
+          case ACTION_EAST:
+            if (range.x >= 0 && (right >= maxWidth || aspectRatio &&
+              (top <= minTop || bottom >= maxHeight))) {
 
-          if (aspectRatio) {
-            height = width / aspectRatio;
-            top -= range.Y / 2;
-          }
+              renderable = false;
+              break;
+            }
 
-          if (width < 0) {
-            action = ACTION_WEST;
-            width = 0;
-          }
+            width += range.x;
 
-          break;
+            if (aspectRatio) {
+              height = width / aspectRatio;
+              top -= range.Y / 2;
+            }
 
-        case ACTION_NORTH:
-          if (range.y <= 0 && (top <= minTop || aspectRatio &&
-            (left <= minLeft || right >= maxWidth))) {
+            if (width < 0) {
+              action = ACTION_WEST;
+              width = 0;
+            }
 
-            renderable = false;
             break;
-          }
 
-          height -= range.y;
-          top += range.y;
+          case ACTION_NORTH:
+            if (range.y <= 0 && (top <= minTop || aspectRatio &&
+              (left <= minLeft || right >= maxWidth))) {
 
-          if (aspectRatio) {
-            width = height * aspectRatio;
-            left += range.X / 2;
-          }
-
-          if (height < 0) {
-            action = ACTION_SOUTH;
-            height = 0;
-          }
-
-          break;
-
-        case ACTION_WEST:
-          if (range.x <= 0 && (left <= minLeft || aspectRatio &&
-            (top <= minTop || bottom >= maxHeight))) {
-
-            renderable = false;
-            break;
-          }
-
-          width -= range.x;
-          left += range.x;
-
-          if (aspectRatio) {
-            height = width / aspectRatio;
-            top += range.Y / 2;
-          }
-
-          if (width < 0) {
-            action = ACTION_EAST;
-            width = 0;
-          }
-
-          break;
-
-        case ACTION_SOUTH:
-          if (range.y >= 0 && (bottom >= maxHeight || aspectRatio &&
-            (left <= minLeft || right >= maxWidth))) {
-
-            renderable = false;
-            break;
-          }
-
-          height += range.y;
-
-          if (aspectRatio) {
-            width = height * aspectRatio;
-            left -= range.X / 2;
-          }
-
-          if (height < 0) {
-            action = ACTION_NORTH;
-            height = 0;
-          }
-
-          break;
-
-        case ACTION_NORTH_EAST:
-          if (aspectRatio) {
-            if (range.y <= 0 && (top <= minTop || right >= maxWidth)) {
               renderable = false;
               break;
             }
 
             height -= range.y;
             top += range.y;
-            width = height * aspectRatio;
-          } else {
-            if (range.x >= 0) {
-              if (right < maxWidth) {
-                width += range.x;
-              } else if (range.y <= 0 && top <= minTop) {
-                renderable = false;
-              }
-            } else {
-              width += range.x;
+
+            if (aspectRatio) {
+              width = height * aspectRatio;
+              left += range.X / 2;
             }
 
-            if (range.y <= 0) {
-              if (top > minTop) {
-                height -= range.y;
-                top += range.y;
-              }
-            } else {
-              height -= range.y;
-              top += range.y;
-            }
-          }
-
-          if (width < 0 && height < 0) {
-            action = ACTION_SOUTH_WEST;
-            height = 0;
-            width = 0;
-          } else if (width < 0) {
-            action = ACTION_NORTH_WEST;
-            width = 0;
-          } else if (height < 0) {
-            action = ACTION_SOUTH_EAST;
-            height = 0;
-          }
-
-          break;
-
-        case ACTION_NORTH_WEST:
-          if (aspectRatio) {
-            if (range.y <= 0 && (top <= minTop || left <= minLeft)) {
-              renderable = false;
-              break;
+            if (height < 0) {
+              action = ACTION_SOUTH;
+              height = 0;
             }
 
-            height -= range.y;
-            top += range.y;
-            width = height * aspectRatio;
-            left += range.X;
-          } else {
-            if (range.x <= 0) {
-              if (left > minLeft) {
-                width -= range.x;
-                left += range.x;
-              } else if (range.y <= 0 && top <= minTop) {
-                renderable = false;
-              }
-            } else {
-              width -= range.x;
-              left += range.x;
-            }
+            break;
 
-            if (range.y <= 0) {
-              if (top > minTop) {
-                height -= range.y;
-                top += range.y;
-              }
-            } else {
-              height -= range.y;
-              top += range.y;
-            }
-          }
+          case ACTION_WEST:
+            if (range.x <= 0 && (left <= minLeft || aspectRatio &&
+              (top <= minTop || bottom >= maxHeight))) {
 
-          if (width < 0 && height < 0) {
-            action = ACTION_SOUTH_EAST;
-            height = 0;
-            width = 0;
-          } else if (width < 0) {
-            action = ACTION_NORTH_EAST;
-            width = 0;
-          } else if (height < 0) {
-            action = ACTION_SOUTH_WEST;
-            height = 0;
-          }
-
-          break;
-
-        case ACTION_SOUTH_WEST:
-          if (aspectRatio) {
-            if (range.x <= 0 && (left <= minLeft || bottom >= maxHeight)) {
               renderable = false;
               break;
             }
 
             width -= range.x;
             left += range.x;
-            height = width / aspectRatio;
-          } else {
-            if (range.x <= 0) {
-              if (left > minLeft) {
-                width -= range.x;
-                left += range.x;
-              } else if (range.y >= 0 && bottom >= maxHeight) {
-                renderable = false;
-              }
-            } else {
-              width -= range.x;
-              left += range.x;
+
+            if (aspectRatio) {
+              height = width / aspectRatio;
+              top += range.Y / 2;
             }
 
-            if (range.y >= 0) {
-              if (bottom < maxHeight) {
-                height += range.y;
-              }
-            } else {
-              height += range.y;
+            if (width < 0) {
+              action = ACTION_EAST;
+              width = 0;
             }
-          }
 
-          if (width < 0 && height < 0) {
-            action = ACTION_NORTH_EAST;
-            height = 0;
-            width = 0;
-          } else if (width < 0) {
-            action = ACTION_SOUTH_EAST;
-            width = 0;
-          } else if (height < 0) {
-            action = ACTION_NORTH_WEST;
-            height = 0;
-          }
+            break;
 
-          break;
+          case ACTION_SOUTH:
+            if (range.y >= 0 && (bottom >= maxHeight || aspectRatio &&
+              (left <= minLeft || right >= maxWidth))) {
 
-        case ACTION_SOUTH_EAST:
-          if (aspectRatio) {
-            if (range.x >= 0 && (right >= maxWidth || bottom >= maxHeight)) {
               renderable = false;
               break;
             }
 
-            width += range.x;
-            height = width / aspectRatio;
-          } else {
-            if (range.x >= 0) {
-              if (right < maxWidth) {
-                width += range.x;
-              } else if (range.y >= 0 && bottom >= maxHeight) {
-                renderable = false;
-              }
-            } else {
-              width += range.x;
+            height += range.y;
+
+            if (aspectRatio) {
+              width = height * aspectRatio;
+              left -= range.X / 2;
             }
 
-            if (range.y >= 0) {
-              if (bottom < maxHeight) {
+            if (height < 0) {
+              action = ACTION_NORTH;
+              height = 0;
+            }
+
+            break;
+
+          case ACTION_NORTH_EAST:
+            if (aspectRatio) {
+              if (range.y <= 0 && (top <= minTop || right >= maxWidth)) {
+                renderable = false;
+                break;
+              }
+
+              height -= range.y;
+              top += range.y;
+              width = height * aspectRatio;
+            } else {
+              if (range.x >= 0) {
+                if (right < maxWidth) {
+                  width += range.x;
+                } else if (range.y <= 0 && top <= minTop) {
+                  renderable = false;
+                }
+              } else {
+                width += range.x;
+              }
+
+              if (range.y <= 0) {
+                if (top > minTop) {
+                  height -= range.y;
+                  top += range.y;
+                }
+              } else {
+                height -= range.y;
+                top += range.y;
+              }
+            }
+
+            if (width < 0 && height < 0) {
+              action = ACTION_SOUTH_WEST;
+              height = 0;
+              width = 0;
+            } else if (width < 0) {
+              action = ACTION_NORTH_WEST;
+              width = 0;
+            } else if (height < 0) {
+              action = ACTION_SOUTH_EAST;
+              height = 0;
+            }
+
+            break;
+
+          case ACTION_NORTH_WEST:
+            if (aspectRatio) {
+              if (range.y <= 0 && (top <= minTop || left <= minLeft)) {
+                renderable = false;
+                break;
+              }
+
+              height -= range.y;
+              top += range.y;
+              width = height * aspectRatio;
+              left += range.X;
+            } else {
+              if (range.x <= 0) {
+                if (left > minLeft) {
+                  width -= range.x;
+                  left += range.x;
+                } else if (range.y <= 0 && top <= minTop) {
+                  renderable = false;
+                }
+              } else {
+                width -= range.x;
+                left += range.x;
+              }
+
+              if (range.y <= 0) {
+                if (top > minTop) {
+                  height -= range.y;
+                  top += range.y;
+                }
+              } else {
+                height -= range.y;
+                top += range.y;
+              }
+            }
+
+            if (width < 0 && height < 0) {
+              action = ACTION_SOUTH_EAST;
+              height = 0;
+              width = 0;
+            } else if (width < 0) {
+              action = ACTION_NORTH_EAST;
+              width = 0;
+            } else if (height < 0) {
+              action = ACTION_SOUTH_WEST;
+              height = 0;
+            }
+
+            break;
+
+          case ACTION_SOUTH_WEST:
+            if (aspectRatio) {
+              if (range.x <= 0 && (left <= minLeft || bottom >= maxHeight)) {
+                renderable = false;
+                break;
+              }
+
+              width -= range.x;
+              left += range.x;
+              height = width / aspectRatio;
+            } else {
+              if (range.x <= 0) {
+                if (left > minLeft) {
+                  width -= range.x;
+                  left += range.x;
+                } else if (range.y >= 0 && bottom >= maxHeight) {
+                  renderable = false;
+                }
+              } else {
+                width -= range.x;
+                left += range.x;
+              }
+
+              if (range.y >= 0) {
+                if (bottom < maxHeight) {
+                  height += range.y;
+                }
+              } else {
                 height += range.y;
               }
+            }
+
+            if (width < 0 && height < 0) {
+              action = ACTION_NORTH_EAST;
+              height = 0;
+              width = 0;
+            } else if (width < 0) {
+              action = ACTION_SOUTH_EAST;
+              width = 0;
+            } else if (height < 0) {
+              action = ACTION_NORTH_WEST;
+              height = 0;
+            }
+
+            break;
+
+          case ACTION_SOUTH_EAST:
+            if (aspectRatio) {
+              if (range.x >= 0 && (right >= maxWidth || bottom >= maxHeight)) {
+                renderable = false;
+                break;
+              }
+
+              width += range.x;
+              height = width / aspectRatio;
             } else {
-              height += range.y;
-            }
-          }
+              if (range.x >= 0) {
+                if (right < maxWidth) {
+                  width += range.x;
+                } else if (range.y >= 0 && bottom >= maxHeight) {
+                  renderable = false;
+                }
+              } else {
+                width += range.x;
+              }
 
-          if (width < 0 && height < 0) {
-            action = ACTION_NORTH_WEST;
-            height = 0;
-            width = 0;
-          } else if (width < 0) {
-            action = ACTION_SOUTH_WEST;
-            width = 0;
-          } else if (height < 0) {
-            action = ACTION_NORTH_EAST;
-            height = 0;
-          }
-
-          break;
-
-        // Move canvas
-        case ACTION_MOVE:
-          this.move(range.x, range.y);
-          renderable = false;
-          break;
-
-        // Zoom canvas
-        case ACTION_ZOOM:
-          this.zoom((function (x1, y1, x2, y2) {
-            var z1 = sqrt(x1 * x1 + y1 * y1);
-            var z2 = sqrt(x2 * x2 + y2 * y2);
-
-            return (z2 - z1) / z1;
-          })(
-            abs(this.startX - this.startX2),
-            abs(this.startY - this.startY2),
-            abs(this.endX - this.endX2),
-            abs(this.endY - this.endY2)
-          ), originalEvent);
-          this.startX2 = this.endX2;
-          this.startY2 = this.endY2;
-          renderable = false;
-          break;
-
-        // Create crop box
-        case ACTION_CROP:
-          if (range.x || range.y) {
-            offset = getOffset(this.cropper);
-            left = this.startX - offset.left;
-            top = this.startY - offset.top;
-            width = cropBoxData.minWidth;
-            height = cropBoxData.minHeight;
-
-            if (range.x > 0) {
-              action = range.y > 0 ? ACTION_SOUTH_EAST :
-                (range.y < 0 ? ACTION_NORTH_EAST : ACTION_EAST);
-            } else if (range.x < 0) {
-              left -= width;
-              action = range.y > 0 ? ACTION_SOUTH_WEST :
-                (range.y < 0 ? ACTION_NORTH_WEST : ACTION_WEST);
-            } else {
-              action = range.y > 0 ? ACTION_SOUTH : ACTION_NORTH;
+              if (range.y >= 0) {
+                if (bottom < maxHeight) {
+                  height += range.y;
+                }
+              } else {
+                height += range.y;
+              }
             }
 
-            if (range.y < 0) {
-              top -= height;
+            if (width < 0 && height < 0) {
+              action = ACTION_NORTH_WEST;
+              height = 0;
+              width = 0;
+            } else if (width < 0) {
+              action = ACTION_SOUTH_WEST;
+              width = 0;
+            } else if (height < 0) {
+              action = ACTION_NORTH_EAST;
+              height = 0;
             }
 
-            // Show the crop box if is hidden
-            if (!this.cropped) {
-              this.cropped = true;
-              removeClass(this.cropBox, CLASS_HIDDEN);
+            break;
+
+          // Move canvas
+          case ACTION_MOVE:
+            this.move(range.x, range.y);
+            renderable = false;
+            break;
+
+          // Zoom canvas
+          case ACTION_ZOOM:
+            this.zoom((function (x1, y1, x2, y2) {
+              var z1 = sqrt(x1 * x1 + y1 * y1);
+              var z2 = sqrt(x2 * x2 + y2 * y2);
+
+              return (z2 - z1) / z1;
+            })(
+              abs(this.startX - this.startX2),
+              abs(this.startY - this.startY2),
+              abs(this.endX - this.endX2),
+              abs(this.endY - this.endY2)
+            ), originalEvent);
+            this.startX2 = this.endX2;
+            this.startY2 = this.endY2;
+            renderable = false;
+            break;
+
+          // Create crop box
+          case ACTION_CROP:
+            if (range.x || range.y) {
+              offset = getOffset(this.cropper);
+              left = this.startX - offset.left;
+              top = this.startY - offset.top;
+              width = cropBoxData.minWidth;
+              height = cropBoxData.minHeight;
+
+              if (range.x > 0) {
+                action = range.y > 0 ? ACTION_SOUTH_EAST :
+                  (range.y < 0 ? ACTION_NORTH_EAST : ACTION_EAST);
+              } else if (range.x < 0) {
+                left -= width;
+                action = range.y > 0 ? ACTION_SOUTH_WEST :
+                  (range.y < 0 ? ACTION_NORTH_WEST : ACTION_WEST);
+              } else {
+                action = range.y > 0 ? ACTION_SOUTH : ACTION_NORTH;
+              }
+
+              if (range.y < 0) {
+                top -= height;
+              }
+
+              // Show the crop box if is hidden
+              if (!this.cropped) {
+                this.cropped = true;
+                removeClass(this.cropBox, CLASS_HIDDEN);
+              }
             }
-          }
 
-          break;
+            break;
 
-        // No default
+          // No default
+        }
       }
 
       if (renderable) {
@@ -2525,14 +2552,14 @@
       var data = {};
 
       if (this.built) {
-        $.each([
+        each([
           'left',
           'top',
           'width',
           'height',
           'naturalWidth',
           'naturalHeight'
-        ], function (i, n) {
+        ], function (n) {
           data[n] = canvasData[n];
         });
       }
@@ -2923,25 +2950,26 @@
   Cropper.TEMPLATE = (
     '<div class="cropper-container">' +
       '<div class="cropper-canvas"></div>' +
-      '<div class="cropper-drag-box"></div>' +
-      '<div class="cropper-crop-box">' +
-        '<span class="cropper-view-box"></span>' +
-        '<span class="cropper-dashed dashed-h"></span>' +
-        '<span class="cropper-dashed dashed-v"></span>' +
-        '<span class="cropper-center"></span>' +
-        '<span class="cropper-face"></span>' +
-        '<span class="cropper-line line-e" data-action="e"></span>' +
-        '<span class="cropper-line line-n" data-action="n"></span>' +
-        '<span class="cropper-line line-w" data-action="w"></span>' +
-        '<span class="cropper-line line-s" data-action="s"></span>' +
-        '<span class="cropper-point point-e" data-action="e"></span>' +
-        '<span class="cropper-point point-n" data-action="n"></span>' +
-        '<span class="cropper-point point-w" data-action="w"></span>' +
-        '<span class="cropper-point point-s" data-action="s"></span>' +
-        '<span class="cropper-point point-ne" data-action="ne"></span>' +
-        '<span class="cropper-point point-nw" data-action="nw"></span>' +
-        '<span class="cropper-point point-sw" data-action="sw"></span>' +
-        '<span class="cropper-point point-se" data-action="se"></span>' +
+      '<div class="cropper-drag-box">' +
+          '<div class="cropper-crop-box">' +
+            '<span class="cropper-view-box"></span>' +
+            '<span class="cropper-dashed dashed-h"></span>' +
+            '<span class="cropper-dashed dashed-v"></span>' +
+            '<span class="cropper-center"></span>' +
+            '<span class="cropper-face"></span>' +
+            '<span class="cropper-line line-e" data-action="e"></span>' +
+            '<span class="cropper-line line-n" data-action="n"></span>' +
+            '<span class="cropper-line line-w" data-action="w"></span>' +
+            '<span class="cropper-line line-s" data-action="s"></span>' +
+            '<span class="cropper-point point-e" data-action="e"></span>' +
+            '<span class="cropper-point point-n" data-action="n"></span>' +
+            '<span class="cropper-point point-w" data-action="w"></span>' +
+            '<span class="cropper-point point-s" data-action="s"></span>' +
+            '<span class="cropper-point point-ne" data-action="ne"></span>' +
+            '<span class="cropper-point point-nw" data-action="nw"></span>' +
+            '<span class="cropper-point point-sw" data-action="sw"></span>' +
+            '<span class="cropper-point point-se" data-action="se"></span>' +
+          '</div>' +
       '</div>' +
     '</div>'
   );

@@ -247,3 +247,12 @@
     }
   }
 }
+
+.cropper-drag-box.cropper-move {
+  .cropper-point,.cropper-line {
+    cursor: grab;
+    cursor: -webkit-grab;
+    cursor: -moz-grab;
+  }
+}
+

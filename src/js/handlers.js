@@ -141,6 +141,7 @@
       }
 
       if (action) {
+
         if (isFunction(options.cropmove) && options.cropmove.call(this.element, {
           originalEvent: e,
           action: action
@@ -153,7 +154,7 @@
         this.endX = touch ? touch.pageX : e.pageX;
         this.endY = touch ? touch.pageY : e.pageY;
 
-        this.change(e.shiftKey, action === ACTION_ZOOM ? e : null);
+        this.change(e.shiftKey, e);
       }
     },
 
